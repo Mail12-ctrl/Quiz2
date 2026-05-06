@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Space Quiz Ultimate</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  background:black;
+  color:white;
+  text-align:center;
+  overflow:hidden;
+}
+
+/* 🌌 background */
+.stars{
+  position:fixed;
+  width:100%;
+  height:100%;
+  background:url("https://www.transparenttextures.com/patterns/stardust.png");
+  animation:move 60s linear infinite;
+}
+@keyframes move{
+  to{background-position:10000px 5000px;}
+}
+
+/* transisi */
+.fade-out{animation:fadeOut 0.4s forwards;}
+.fade-in{animation:fadeIn 0.4s;}
+@keyframes fadeOut{to{opacity:0; transform:scale(0.9);}}
+@keyframes fadeIn{from{opacity:0;}}
+
+/* box */
+.box{position:relative; z-index:2; margin-top:40px;}
+
+/* karakter */
+.character{
+  width:90px;
+  animation:float 4s ease-in-out infinite, glow 2s infinite alternate;
+}
+@keyframes float{50%{transform:translateY(-15px);}}
+@keyframes glow{to{filter:drop-shadow(0 0 20px cyan);}}
+
+/* tombol */
+button{
+  padding:12px;
+  margin:8px;
+  width:80%;
+  border:none;
+  border-radius:15px;
+  background:linear-gradient(45deg,#00f2fe,#4facfe);
+  font-weight:bold;
+}
+
+/* map */
+.map-container{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:15px;
+}
+.planet{
+  width:70px;
+  height:70px;
+  border-radius:50%;
+  background:cyan;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+.locked{background:gray; opacity:0.4;}
+
+/* soal */
+#soal{
+  background:rgba(255,255,255,0.1);
+  padding:10px;
+  border-radius:10px;
+}
+
+.timer{color:red;}
+
+.boom{font-size:50px;}
+</style>
+</head>
+
+<body>
+
+<div class="stars"></div>
+
+<div class="box">
+
+<!-- MENU -->
+<div id="menu">
+  <img src="https://cdn-icons-png.flaticon.com/512/3212/3212608.png" class="character">
+  <h2>🚀 SPACE QUIZ</h2>
+  <button onclick="start()">🎮 Mulai</button>
+  <button onclick="bukaMap()">🪐 Map Planet</button>
+</div>
+
+<!-- MAP -->
+<div id="map" style="display:none">
+  <h2>🌌 PILIH PLANET</h2>
+  <div class="map-container">
+    <div class="planet" onclick="mulaiLevel(1)">🌍</div>
+    <div class="planet locked" onclick="cekUnlock(5)">🌕</div>
+    <div class="planet locked" onclick="cekUnlock(10)">🪐</div>
+    <div class="planet locked" onclick="cekUnlock(20)">🌌</div>
+  </div>
+  <button onclick="pindah('map','menu')">⬅️ Kembali</button>
+</div>
+
+<!-- STORY -->
+<div id="story" style="display:none">
+  <h2 id="storyText"></h2>
+  <button onclick="lanjutGame()">➡️ Lanjut</button>
+</div>
+
+<!-- GAME -->
+<div id="game" style="display:none">
+  <h3 id="level"></h3>
+  <p id="highscore"></p>
+  <div class="timer" id="timer"></div>
+  <h2 id="soal"></h2>
+  <div id="pilihan"></div>
+</div>
+
+<!-- GAME OVER -->
+<div id="over" style="display:none">
+  <div class="boom">💥</div>
+  <h2>Misi Gagal</h2>
+  <p id="hasil"></p>
+  <button onclick="ulang()">Ulangi</button>
+</div>
+
+</div>
+
+<!-- AUDIO -->
+<audio id="bgm" loop>
+<source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_6c1f4c8f3b.mp3">
+</audio>
+
+<script>
+let level=1,waktu=10,interval,current;
+let soalList=[],indexSoal=0;
+
+/* TRANSISI */
+function pindah(a,b){
+  document.getElementById(a).style.display="none";
+  document.getElementById(b).style.display="block";
+}
+
+/* START */
+function start(){
+  document.body.onclick=()=>document.getElementById("bgm").play();
+  setupSoal();
+  tampilStory();
+  pindah("menu","story");
+}
+
+/* MAP */
+function bukaMap(){
+  updatePlanet();
+  pindah("menu","map");
+}
+
+function mulaiLevel(lv){
+  level=lv;
+  setupSoal();
+  tampilStory();
+  pindah("map","story");
+}
+
+function cekUnlock(lv){
+  let hs=localStorage.getItem("hs")||0;
+  if(hs>=lv) mulaiLevel(lv);
+  else alert("🔒 Level "+lv);
+}
+
+/* UNLOCK */
+function updatePlanet(){
+  let hs=localStorage.getItem("hs")||0;
+  document.querySelectorAll(".planet").forEach((p,i)=>{
+    let req=[1,5,10,20][i];
+    if(hs>=req) p.classList.remove("locked");
+  });
+}
+
+/* STORY */
+function getStory(lv){
+  if(lv==1) return "🚀 Misi dimulai dari Bumi";
+  if(lv==5) return "🌕 Sampai di Bulan";
+  if(lv==10) return "🪐 Menuju Saturnus";
+  if(lv==20) return "🌌 Galaksi baru";
+  return "✨ Lanjutkan misi...";
+}
+function tampilStory(){
+  document.getElementById("storyText").innerText=getStory(level);
+}
+function lanjutGame(){
+  pindah("story","game");
+  tampil();
+}
+
+/* SOAL TANPA ULANG */
+function setupSoal(){
+  soalList=[
+    {t:"Turunan x²?",o:["x","2x","x²","2"],b:1},
+    {t:"Ibukota Kanada?",o:["Toronto","Ottawa","Vancouver","Montreal"],b:1},
+    {t:"Planet terbesar?",o:["Mars","Bumi","Jupiter","Venus"],b:2},
+    {t:"Hukum Newton II?",o:["F=ma","E=mc²","V=IR","P=mv"],b:0}
+  ];
+  soalList.sort(()=>Math.random()-0.5);
+  indexSoal=0;
+}
+
+/* TAMPIL */
+function tampil(){
+  if(indexSoal>=soalList.length){
+    document.getElementById("soal").innerText="🎉 Selesai!";
+    return;
+  }
+
+  current=soalList[indexSoal++];
+  document.getElementById("level").innerText="Level "+level;
+
+  let hs=localStorage.getItem("hs")||0;
+  document.getElementById("highscore").innerText="🏆 "+hs;
+
+  document.getElementById("soal").innerText=current.t;
+
+  let html="";
+  current.o.forEach((o,i)=>{
+    html+=`<button onclick="cek(${i})">${o}</button>`;
+  });
+
+  document.getElementById("pilihan").innerHTML=html;
+  timer();
+}
+
+/* TIMER */
+function timer(){
+  waktu=10;
+  document.getElementById("timer").innerText=waktu;
+
+  interval=setInterval(()=>{
+    waktu--;
+    document.getElementById("timer").innerText=waktu;
+    if(waktu==0) kalah();
+  },1000);
+}
+
+/* CEK */
+function cek(j){
+  clearInterval(interval);
+  if(j!=current.b){
+    kalah();
+  }else{
+    level++;
+    if(level%5==0){
+      tampilStory();
+      pindah("game","story");
+    }else tampil();
+  }
+}
+
+/* KALAH */
+function kalah(){
+  let hs=localStorage.getItem("hs")||0;
+  if(level>hs) localStorage.setItem("hs",level);
+
+  pindah("game","over");
+
+  document.getElementById("hasil").innerText=
+    "Level "+level+" | HS "+(localStorage.getItem("hs")||level);
+}
+
+/* ULANG */
+function ulang(){location.reload();}
+</script>
+
+</body>
+</html>
